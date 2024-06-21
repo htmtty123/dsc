@@ -34,35 +34,71 @@ exploring the data, and getting acquainted with the 3 tables. */
 /* Q1: Some of the facilities charge a fee to members, but some do not.
 Write a SQL query to produce a list of the names of the facilities that do. */
 
+SELECT name
+FROM facilities 
+WHERE membercost > 0
+
+
 
 /* Q2: How many facilities do not charge a fee to members? */
 
+SELECT count(name)
+FROM facilities 
+WHERE membercost = 0
 
 /* Q3: Write an SQL query to show a list of facilities that charge a fee to members,
 where the fee is less than 20% of the facility's monthly maintenance cost.
 Return the facid, facility name, member cost, and monthly maintenance of the
 facilities in question. */
 
+SELECT facid, name, membercost,monthlymaintenance
+FROM facilities 
+WHERE (membercost > 0) AND (membercost < 0.2 * monthlymaintenance)
+
 
 /* Q4: Write an SQL query to retrieve the details of facilities with ID 1 and 5.
 Try writing the query without using the OR operator. */
 
+SELECT *
+FROM facilities
+WHERE facid IN (1,5);
 
 /* Q5: Produce a list of facilities, with each labelled as
 'cheap' or 'expensive', depending on if their monthly maintenance cost is
 more than $100. Return the name and monthly maintenance of the facilities
 in question. */
 
+SELECT name,
+CASE WHEN monthlymaintenance > 100 THEN 'expensive'
+ELSE 'cheap' END as monthlymaintenance
+FROM facilities
+
 
 /* Q6: You'd like to get the first and last name of the last member(s)
 who signed up. Try not to use the LIMIT clause for your solution. */
 
+SELECT firstname,surname
+FROM 
+( 
+SELECT firstname,surname,joindate,RANK() OVER (ORDER BY joindate DESC) as rjoin
+FROM members
+)
+where rjoin <=2
 
 /* Q7: Produce a list of all members who have used a tennis court.
 Include in your output the name of the court, and the name of the member
 formatted as a single column. Ensure no duplicate data, and order by
-the member name. */
+the member name. *
 
+
+select distinct (a.firstname || ' ' || a.surname) as membername, c.name
+from members a
+INNER JOIN bookings b
+ON a.memid = b.memid
+INNER JOIN Facilities c
+ON b.facid=c.facid
+WHERE (a.firstname <> 'GUEST') and (c.name LIKE 'Tennis%')
+ORDER by membername
 
 /* Q8: Produce a list of bookings on the day of 2012-09-14 which
 will cost the member (or guest) more than $30. Remember that guests have
@@ -71,9 +107,37 @@ the guest user's ID is always 0. Include in your output the name of the
 facility, the name of the member formatted as a single column, and the cost.
 Order by descending cost, and do not use any subqueries. */
 
+SELECT b.name,(c.firstname || ' ' || c.surname) AS membername,
+(CASE WHEN c.memid=0 THEN b.guestcost*a.slots
+WHEN c.memid<> 0 THEN b.membercost * a.slots
+END) AS cost
+FROM bookings a
+INNER JOIN facilities b
+ON a.facid=b.facid
+INNER JOIN members c
+ON a.memid=c.memid
+WHERE (a.starttime LIKE '2012-09-14%') AND  ((CASE WHEN c.memid=0 THEN b.guestcost*a.slots
+WHEN c.memid<> 0 THEN b.membercost * a.slots END) > 30)
+ORDER BY cost DESC
+
 
 /* Q9: This time, produce the same result as in Q8, but using a subquery. */
-
+SELECT t.name, (t.firstname || ' ' || t.surname) AS membername, t.cost
+FROM
+(
+SELECT b.name,c.firstname,c.surname,
+(CASE WHEN c.memid=0 THEN b.guestcost*a.slots
+WHEN c.memid<> 0 THEN b.membercost * a.slots
+END) AS cost
+FROM bookings a
+INNER JOIN facilities b
+ON a.facid=b.facid
+INNER JOIN members c
+ON a.memid=c.memid
+WHERE a.starttime LIKE '2012-09-14%'
+)t
+WHERE t.cost > 30
+ORDER BY t.cost DESC
 
 /* PART 2: SQLite
 /* We now want you to jump over to a local instance of the database on your machine. 
